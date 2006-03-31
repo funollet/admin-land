@@ -1,0 +1,75 @@
+#!/bin/bash
+# pg_dumpsep
+#   Dumps every Postgres DB on separate files.
+#
+# Author: Jordi Funollet <jordi.f@ati.es>
+
+# CHANGELOG:
+# 2006-03-24 20:26:49
+# - Filename includes time, not just day.
+#
+# 2006-03-01 16:46:41  
+# - First release.
+
+
+####  Custom config  ####
+BACKUPDIR='/home/backups/postgres'	# Destination directory.
+DUMPOPTS=''				# Parameters for pg_dump.
+####
+
+# Just warn and continue.
+function warn () { echo "[`basename $0`] warning: $*" ; } ;
+# Warn and exit.
+function error () { echo "[`basename $0`] error: $*" ; exit 1 ; } ;
+
+function check_execs () {
+# Verifies we can execute received files.
+
+    for X in $@ ; do
+	# Is it in $PATH?
+	hash $X > /dev/null 2>&1 || error "$X not in PATH"
+	FULLPATH=`hash -t $X`
+	# If it's executable, jump to next file.
+	[ -x $FULLPATH ] && continue
+	# Is it a symbolic link...?
+	[ ! -L $FULLPATH ] || error "$X non-executable"
+	# ... and the referenced file is executable? (Ugly hack).
+	stat -Lc '%A' $FULLPATH | grep 'x' || error "$X non-executable"
+    done
+}
+
+
+
+
+function pre_checks () {
+# Check required files and executables to minimize run-time errors.
+
+    # Check configuration parameters.
+    [ -z "$BACKUPDIR" ] && error "BACKUPDIR is a required parameter"
+    # Check destination directory.
+    [ -d $BACKUPDIR ] || \
+	error "non-existant destination directory ($BACKUPDIR)"
+    [ -w $BACKUPDIR ] || \
+	error "non-writeable destination directory ($BACKUPDIR)"
+    # Check used executables.
+    EXECS='psql cut grep pg_dump gzip'
+    check_execs $EXECS
+}
+
+
+function main () {
+    umask 0177
+
+    # Databases list.
+    DDBB=`psql -qtAl | cut -d\| -f1 | grep -Ev '^template0'`
+    
+    for i in $DDBB ; do
+	    FNAME=$BACKUPDIR/$i.`date +%F.%T`.pgsql
+	    pg_dump $DUMPOPTS "$i" > $FNAME || warn "dumping $i"
+	    gzip "$FNAME" || warn "compressing $FNAME"
+    done
+}
+
+
+pre_checks
+main

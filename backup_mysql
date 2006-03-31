@@ -1,0 +1,36 @@
+#!/bin/bash
+# backup_mysql
+
+# CHANGELOG
+# 2005-09-28			Jordi Funollet <jordi.f@ati.es>
+# TODO:
+#  * check_conf_file ()
+
+# Just warn and continue.
+function warn () { echo "[`basename $0`] warning: $*" ; } ;
+# Warn and exit.
+function error () { echo "[`basename $0`] error: $*" ; exit 1 ; } ;
+# Checks var has value.
+function test_var () { [ -z "$2" ] && warn "$1 void." ; } ;
+
+# User, password and DDBB list from external file.
+source $HOME/.backup_mysql.rc || error "config file not found."
+test_var DDBB $DDBB
+test_var MYUSER $MYUSER
+test_var MYPWD $MYPWD
+test_var BACKUPDIR $BACKUPDIR
+
+umask 0077
+# Create $DIR if it don't exists.
+DIR="$BACKUPDIR/`date -I`"
+[ -d $DIR ] || mkdir -p $DIR
+
+# Dump each database
+for i in $DDBB ; do
+	FNAME="$DIR/mysql.$i.`date -I`"
+	mysqldump -u $MYUSER -p$MYPWD --opt $i > $FNAME
+	# Compress if has contents, warn else.
+	[ -s $FNAME ] && gzip -f $FNAME || warn "$FNAME void."
+done
+
+exit 0
