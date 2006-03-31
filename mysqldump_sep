@@ -10,6 +10,7 @@
 # - Backup all DBs.
 # - Don't use a config file. Use ~/.my.cfg
 # - Use date and time on filename.
+# - Change default value for $BACKUPDIR.
 #
 # TODO:
 # - check_conf_file ()
@@ -28,7 +29,7 @@ function test_var () { [ -z "$2" ] && warn "$1 void." ; } ;
 
 ####  Custom config  ####
 # Destination directory.
-BACKUPDIR='/home/backups/postgres'
+BACKUPDIR='/home/backups/mysql'
 
 # Backup all DBs.
 if [ -z "$DDBB" ] ; then
