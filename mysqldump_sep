@@ -1,36 +1,62 @@
 #!/bin/bash
-# backup_mysql
+# mysqldump_sep
+#
+# :Author:   Jordi Funollet <jordi.f@ati.es>
 
 # CHANGELOG
-# 2005-09-28			Jordi Funollet <jordi.f@ati.es>
+# 2005-09-28
+# - Initial version.
+# 2006-03-31 19:37:55
+# - Backup all DBs.
+# - Don't use a config file. Use ~/.my.cfg
+# - Use date and time on filename.
+#
 # TODO:
-#  * check_conf_file ()
+# - check_conf_file ()
+# - broader pre_check
 
+
+####  Generic library  ####
 # Just warn and continue.
 function warn () { echo "[`basename $0`] warning: $*" ; } ;
 # Warn and exit.
 function error () { echo "[`basename $0`] error: $*" ; exit 1 ; } ;
 # Checks var has value.
 function test_var () { [ -z "$2" ] && warn "$1 void." ; } ;
+###########################
 
-# User, password and DDBB list from external file.
-source $HOME/.backup_mysql.rc || error "config file not found."
-test_var DDBB $DDBB
-test_var MYUSER $MYUSER
-test_var MYPWD $MYPWD
-test_var BACKUPDIR $BACKUPDIR
 
-umask 0077
-# Create $DIR if it don't exists.
-DIR="$BACKUPDIR/`date -I`"
-[ -d $DIR ] || mkdir -p $DIR
+####  Custom config  ####
+# Destination directory.
+BACKUPDIR='/home/backups/postgres'
 
-# Dump each database
-for i in $DDBB ; do
-	FNAME="$DIR/mysql.$i.`date -I`"
-	mysqldump -u $MYUSER -p$MYPWD --opt $i > $FNAME
+# Backup all DBs.
+if [ -z "$DDBB" ] ; then
+    DDBB=`mysqlshow | awk '{print $2}' | tail +4 `
+fi
+#########################
+
+
+function pre_checks () {
+    test_var DDBB $DDBB
+    test_var BACKUPDIR $BACKUPDIR
+}    
+
+
+function main () {
+    umask 0077
+    
+    # Dump each database
+    for db in $DDBB ; do
+	FNAME="$BACKUPDIR/mysql.$db.`date +%F.%X`.mysql"
+	mysqldump --opt $db > $FNAME || warn "problems dumping $db"
 	# Compress if has contents, warn else.
 	[ -s $FNAME ] && gzip -f $FNAME || warn "$FNAME void."
-done
+    done
 
-exit 0
+    exit 0
+}
+
+
+pre_checks
+main   
