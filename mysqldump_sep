@@ -4,48 +4,51 @@
 # :Author:   Jordi Funollet <jordi.f@ati.es>
 
 # CHANGELOG
-# 2005-09-28
-# - Initial version.
+#
+# 2006-04-03 20:20:30
+# - Backup all DBs if var DDBB not set.
+# - Load functions from 'common-sh-functions' file.
 # 2006-03-31 19:37:55
 # - Backup all DBs.
 # - Don't use a config file. Use ~/.my.cfg
 # - Use date and time on filename.
 # - Change default value for $BACKUPDIR.
+# 2005-09-28
+# - Initial version.
 #
 # TODO:
 # - check_conf_file ()
 # - broader pre_check
 
-
-####  Generic library  ####
-# Just warn and continue.
-function warn () { echo "[`basename $0`] warning: $*" ; } ;
-# Warn and exit.
-function error () { echo "[`basename $0`] error: $*" ; exit 1 ; } ;
-# Checks var has value.
-function test_var () { [ -z "$2" ] && warn "$1 void." ; } ;
-###########################
+# Import commonly used functions.
+if [ -f ./common-sh-functions ] ; then
+    . ./common-sh-functions
+elif [ -f /usr/local/bin/common-sh-functions ] ; then
+    . /usr/local/bin/common-sh-functions
+else
+    echo "common-sh-functions not found"
+    exit 1
+fi
 
 
 ####  Custom config  ####
 # Destination directory.
 BACKUPDIR='/home/backups/mysql'
-
-# Backup all DBs.
-if [ -z "$DDBB" ] ; then
-    DDBB=`mysqlshow | awk '{print $2}' | tail +4 `
-fi
 #########################
 
 
 function pre_checks () {
-    test_var DDBB $DDBB
-    test_var BACKUPDIR $BACKUPDIR
+    test_var BACKUPDIR
 }    
 
 
 function main () {
     umask 0077
+    
+    if [ -z "$DDBB" ] ; then
+	# Backup all DBs.
+	DDBB=`mysqlshow | awk '{print $2}' | tail +4 `
+    fi
     
     # Dump each database
     for db in $DDBB ; do
@@ -60,4 +63,4 @@ function main () {
 
 
 pre_checks
-main   
+#main   
