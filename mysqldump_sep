@@ -1,21 +1,11 @@
 #!/bin/bash
 # mysqldump_sep
+#   Dumps each mysql-database on individual files and gzips it.
+#   Gets myslq-user and password from ~/.my.cnf.
 #
 # :Author:   Jordi Funollet <jordi.f@ati.es>
 
-# CHANGELOG
-#
-# 2006-04-03 20:20:30
-# - Backup all DBs if var DDBB not set.
-# - Load functions from 'common-sh-functions' file.
-# 2006-03-31 19:37:55
-# - Backup all DBs.
-# - Don't use a config file. Use ~/.my.cfg
-# - Use date and time on filename.
-# - Change default value for $BACKUPDIR.
-# 2005-09-28
-# - Initial version.
-#
+
 # TODO:
 # - check_conf_file ()
 # - broader pre_check
@@ -34,6 +24,8 @@ fi
 ####  Custom config  ####
 # Destination directory.
 BACKUPDIR='/home/backups/mysql'
+# Databases to backup. Left void to backup all dbs.
+DDBB=''
 #########################
 
 
@@ -52,10 +44,10 @@ function main () {
     
     # Dump each database
     for db in $DDBB ; do
-	FNAME="$BACKUPDIR/mysql.$db.`date +%F.%X`.mysql"
-	mysqldump --opt $db > $FNAME || warn "problems dumping $db"
+	FNAME="$BACKUPDIR/mysql.$db.`date +%F.%H%M%S`.mysql"
+	mysqldump --opt "$db" > "$FNAME" || warn "problems dumping $db"
 	# Compress if has contents, warn else.
-	[ -s $FNAME ] && gzip -f $FNAME || warn "$FNAME void."
+	[ -s "$FNAME" ] && gzip -f "$FNAME" || warn "$FNAME void."
     done
 
     exit 0
@@ -63,4 +55,4 @@ function main () {
 
 
 pre_checks
-#main   
+main 
