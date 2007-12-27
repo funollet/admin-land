@@ -8,11 +8,28 @@
 
 # TODO:
 # - check_conf_file ()
-# - broader pre_check
 
-case $1 in
-    '-u'|'--usage'|'-h'|'--help')
-        cat <<.
+
+####  Custom config  ####
+# Destination directory.
+BACKUPDIR='/home/backups/mysql'
+#########################
+
+
+# Just warn and continue.
+warn () { echo "[`basename $0`] warning: $*" ; } ;
+# Warn and exit.
+error () { echo "[`basename $0`] error: $*" ; exit 1 ; } ;
+# Checks var has value.
+test_var () {
+    NAME=`echo $1`
+    VALUE=$(eval echo \$`echo $1`)
+    [ -z "$VALUE" ] && warn "$NAME void." ;
+}
+
+
+usage () {
+    cat <<.
 Usage:  `basename $0` [DBNAME]...
 Wraps 'mysqldump' to dump every db on a gzipped file.
 
@@ -26,31 +43,9 @@ Example configuration for ~/.my.cnf
     [mysqldump]
     opt
 .
-        exit 1
-        ;;
-esac
+}
 
 
-# Import commonly used functions.
-if [ -f "$PWD/common-sh-functions" ] ; then
-    . "$PWD/common-sh-functions"
-elif [ -f /usr/local/bin/common-sh-functions ] ; then
-    . /usr/local/bin/common-sh-functions
-else
-    echo "common-sh-functions not found"
-    exit 1
-fi
-
-
-####  Custom config  ####
-# Destination directory.
-BACKUPDIR='/home/backups/mysql'
-#########################
-
-
-pre_checks () {
-    test_var BACKUPDIR
-}    
 
 
 remove_older () {
@@ -64,14 +59,21 @@ remove_older () {
 }
 
 
+
 main () {
-    umask 0077
-    
+    case $1 in
+	'-u'|'--usage'|'-h'|'--help')
+	    usage && exit 1 ;;
+    esac
+
     DDBB="$*"
     if [ -z "$DDBB" ] ; then
 	# Backup all DBs.
         DDBB=`mysql -BN -e 'show databases;'`
     fi
+    
+    test_var BACKUPDIR
+    umask 0077
     
     remove_older '1 month ago'
 
@@ -79,7 +81,7 @@ main () {
     for db in $DDBB ; do
 	FNAME="$BACKUPDIR/$db.`date +%F-%H%M%S`"
 	mysqldump "$db" > "$FNAME" || warn "problems dumping $db"
-	# Compress if has contents, warn else.
+	# Compress if has contents, warn otherwise.
 	[ -s "$FNAME" ] && gzip -f "$FNAME" || warn "$FNAME void."
     done
 
@@ -87,5 +89,4 @@ main () {
 }
 
 
-pre_checks
 main
