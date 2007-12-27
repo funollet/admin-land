@@ -48,12 +48,23 @@ BACKUPDIR='/home/backups/mysql'
 #########################
 
 
-function pre_checks () {
+pre_checks () {
     test_var BACKUPDIR
 }    
 
 
-function main () {
+remove_older () {
+    # Remove files older than given period of time.
+
+    PERIOD="$*"
+    [ -z "$PERIOD" ] && error "invalid time period of files to remove."
+
+    touch -d"$PERIOD" $BACKUPDIR/.time_mark
+    find  $BACKUPDIR ! -newer $BACKUPDIR/.time_mark | xargs rm
+}
+
+
+main () {
     umask 0077
     
     DDBB="$*"
@@ -62,9 +73,11 @@ function main () {
         DDBB=`mysql -BN -e 'show databases;'`
     fi
     
+    remove_older '1 month ago'
+
     # Dump each database
     for db in $DDBB ; do
-	FNAME="$BACKUPDIR/$db.`date +%F.%H%M%S`.mysql"
+	FNAME="$BACKUPDIR/$db.`date +%F-%H%M%S`"
 	mysqldump "$db" > "$FNAME" || warn "problems dumping $db"
 	# Compress if has contents, warn else.
 	[ -s "$FNAME" ] && gzip -f "$FNAME" || warn "$FNAME void."
