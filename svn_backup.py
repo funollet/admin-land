@@ -195,6 +195,8 @@ def cleanup_action (dump_dir, dry_run=False):
 
     base_files =  find_base_files (dump_dir)
     overlapped = [SvnDmp(fname).get_overlapped_files()  for fname in base_files]
+    # Flat list.
+    overlapped = reduce(list.__add__, overlapped)
 
     for fname in overlapped:
         if dry_run:
@@ -229,7 +231,7 @@ def main():
         if len(args) < 1:
             cleanup_action (os.path.join(DEFAULT_DUMP_DIR, 'latest'))
         else:
-            cleanup_action (args[0])
+            cleanup_action (args[0], dry_run=options.dry_run)
 
     if options.prepare_full:
         prepare_full (DEFAULT_DUMP_DIR)
