@@ -8,6 +8,7 @@ newer ones and creates a directory structure for storing the backups.
 
 import glob, os, time
 from optparse import OptionParser
+import logging
 
 # Customize as needed.
 DEFAULT_DUMP_DIR = '/home/backups/svn/'
@@ -197,7 +198,7 @@ def cleanup_action (dump_dir, dry_run=False):
 
     for fname in overlapped:
         if dry_run:
-            print fname
+            logging.debug('remove %s' % fname)
         else:
             os.remove(fname)
 
@@ -218,6 +219,11 @@ def main():
                       help="do nothing; just show", dest="dry_run")
     (options, args) = parser.parse_args()
 
+    # Set debug level.
+    if options.dry_run:
+        logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig(level=logging.INFO)
     
     if options.cleanup:
         if len(args) < 1:
