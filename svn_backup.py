@@ -11,8 +11,6 @@ from optparse import OptionParser
 
 # Customize as needed.
 DEFAULT_DUMP_DIR = '/home/backups/svn/'
-DEBUG = 0
-
 
 
 ###### REFACTORING #######
@@ -61,6 +59,8 @@ DEBUG = 0
 
 
 class SvnDmp:
+    """Represents a SVN incremental dumpfile. Can identify overlapped files.
+    """
     
     def __init__(self, fnames):
         """
@@ -100,11 +100,11 @@ class SvnDmp:
         minors = set( [r[0] for r in revisions] )
     
         result = []
-        for m in minors:
-            majors = [int(r[1]) for r in revisions if r[0]==m ]
+        for minor in minors:
+            majors = [int(r[1]) for r in revisions if r[0]==minor ]
             max_majors = max(majors)
             overlaped = [ '%06d' % maj  for maj in majors if maj != max_majors ]
-            result += [(m, o) for o in overlaped]
+            result += [(minor, o) for o in overlaped]
     
         result.sort()
         return result
@@ -188,14 +188,15 @@ def prepare_full (dump_root_dir):
 
 
 
-def cleanup_action (dump_dir):
+def cleanup_action (dump_dir, dry_run=False):
+    """Removes files overlapped by other files.
+    """
 
-    overlapped = []
-    for f in find_base_files (dump_dir):
-        overlapped += SvnDmp(f).get_overlapped_files()
+    base_files =  find_base_files (dump_dir)
+    overlapped = [SvnDmp(fname).get_overlapped_files()  for fname in base_files]
 
     for fname in overlapped:
-        if DEBUG:
+        if dry_run:
             print fname
         else:
             os.remove(fname)
@@ -203,6 +204,8 @@ def cleanup_action (dump_dir):
 
 
 def main():
+    """Main program."""
+    
     usage = u"usage: %prog [options] dumpdir"
     parser = OptionParser( usage=usage )
     parser.add_option( "-c", "--cleanup",
@@ -211,6 +214,8 @@ def main():
     parser.add_option( "-p", "--prepare-full",
         action="store_true", dest="prepare_full", default=False,
         help=u'creates a directory structure for doing a full dump' )
+    parser.add_option("-n", "--dry-run", action="store_true",
+                      help="do nothing; just show", dest="dry_run")
     (options, args) = parser.parse_args()
 
     
