@@ -2,34 +2,20 @@
 # gmetric_feeder.py
 # -*- coding: utf-8 -*-
 #
-# Jordi Funollet <jordi.f@ati.es>  Mon, 28 May 2007 17:55:50 +0200
+# Jordi Funollet <jordi.f@ati.es>
 
-import urllib, sys
+"""Gets params from serveral sources and digests it.
+Finally, invokes 'gmetric' to introduce the data into Ganglia.
+"""
+
+
+import urllib
 from optparse import OptionParser
-#import subprocess
 import commands
 
 
-def parse_cmdline ():
-    """optparse wrapper.
-    """
-    
-    us = """usage: %prog [options]"""
-    parser = OptionParser(usage=us)
-    
-    parser.add_option("-n", "--dry-run", action="store_true",
-                      help="do nothing; just show", dest="dry_run")
-    parser.add_option("-a", "--apache", action="store_true",
-                      help="Apache mod_status")
-    parser.add_option("-m", "--mysql", action="store_true",
-                      help="Mysql SHOW STATUS")
-    
-    return parser.parse_args()
 
-
-                    
-
-class GenericGmetric (object):
+class Gmetric (object):
     """Base class for retrieving data and putting it into gmetric.
     """
 
@@ -67,8 +53,6 @@ class GenericGmetric (object):
     def __run__ (self, cmd):
         """Saves data into Gmetric.
         """
-
-        #return subprocess.call (' '.split(cmd))
         return commands.getstatusoutput(cmd)
 
 
@@ -87,7 +71,7 @@ class GenericGmetric (object):
 
 
 
-class ApacheGmetric (GenericGmetric):
+class Apache (Gmetric):
     """Gets data from Apache mod_status and digest it for gmetric.
 
     Put something like this on your Apache configuration.
@@ -120,10 +104,12 @@ class ApacheGmetric (GenericGmetric):
         else:
             self.url = url
 
-        super( ApacheGmetric, self ).__init__()
+        super( Apache, self ).__init__()
 
         
     def get_status (self):
+        """Retrieve data from Apache's mod_status.
+        """
         sock = urllib.urlopen( self.url )
         page = sock.read()
         sock.close()
@@ -135,7 +121,7 @@ class ApacheGmetric (GenericGmetric):
 
 
 
-class MysqlGmetric (GenericGmetric):
+class Mysql (Gmetric):
     """Gets status from Mysql and digest it for gmetric.
 
     Put authentication data on '~/.my.cnf', please.
@@ -151,14 +137,17 @@ class MysqlGmetric (GenericGmetric):
             ('Questions', 'uint16', 'mysql_queries', 'queries' ),
             ('Threads_connected', 'uint16', 'mysql_threads_conn', 'threads'),
             ('Com_select', 'uint16', 'mysql_select_queries', 'queries/sec'),
-            ('Table_locks_waited', 'float', 'mysql_table_locks_waited', 'locks/sec'),
+            ('Table_locks_waited', 'float', 'mysql_table_locks_waited',
+                'locks/sec'),
             ('Slow_queries', 'float', 'mysql_slow_queries', 'queries/sec' ),
         )
                    
-        super( MysqlGmetric, self ).__init__()
+        super( Mysql, self ).__init__()
 
         
     def get_status (self):
+        """Retrieve data from Mysql's 'SHOW STATUS'.
+        """
         import MySQLdb
         
         # Create a connection object and create a cursor
@@ -173,19 +162,37 @@ class MysqlGmetric (GenericGmetric):
 
 
 
-if __name__ == '__main__':
-
-    opts = parse_cmdline()[0]
+def main():
+    """Execute the program.
+    """
+    
+    # Parse command-line.
+    usage = """usage: %prog [options]"""
+    parser = OptionParser(usage=usage)
+    
+    parser.add_option("-n", "--dry-run", action="store_true",
+                      help="do nothing; just show", dest="dry_run")
+    parser.add_option("-a", "--apache", action="store_true",
+                      help="Apache mod_status")
+    parser.add_option("-m", "--mysql", action="store_true",
+                      help="Mysql SHOW STATUS")
+    
+    opts, ___ = parser.parse_args()
+    
     
     if opts.apache:
         if opts.dry_run:
-            print ApacheGmetric()
+            print Apache()
         else:
-            ApacheGmetric().save()
+            Apache().save()
 
     if opts.mysql:
         if opts.dry_run:
-            print MysqlGmetric()
+            print Mysql()
         else:
-            MysqlGmetric().save()
+            Mysql().save()
 
+
+
+if __name__ == "__main__":
+    main()
