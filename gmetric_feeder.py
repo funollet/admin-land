@@ -45,6 +45,8 @@ class Gmetric (object):
     def get_status (self):
         """Retrieves data from some source. Returns a dictionary with keys
         and values to be stored with gmetric.
+        
+        Must define a self.params dict of keys we want into gmetric.
         """
         return {}
 
@@ -56,14 +58,14 @@ class Gmetric (object):
                 (data, name, key, rrd_type)
         """
         
-        template = 'gmetric -n "%s" -v "%s" -t %s'
+        template = 'gmetric -n %s -v %s -t %s'
 
         if name is None:
             name = key.lower()
         gmetric_cmd = template % ( name, self.data[key], rrd_type )
     
         if not unit is None:
-            gmetric_cmd = ' '.join( (gmetric_cmd, '-u "%s"' % unit) )
+            gmetric_cmd = ' '.join( (gmetric_cmd, '-u %s' % unit) )
     
         return gmetric_cmd
     
@@ -107,7 +109,6 @@ class Apache (Gmetric):
     def __init__ (self, url=None):
         """Initializes values.
 
-        %params: fields in mod_status we want to get.
         %url: (optional)
         """
         
@@ -149,8 +150,6 @@ class Mysql (Gmetric):
     
     def __init__ (self):
         """Initializes values.
-
-        %params: fields in 'show status' we want to get.
         """
         
         self.params = (
@@ -185,6 +184,57 @@ class Mysql (Gmetric):
 
 
 
+class Vsftpd(Gmetric):
+    """Gets status from Vsftpd processes and digest it for gmetric.
+
+    Set 'setproctitle_enable=YES' on your vsftpd.conf to show connection 
+    status per-process.
+    """
+    
+    def __init__ (self):
+        """Initializes values.
+        """
+        
+        self.params = (
+            ('vsftpd_clients', 'uint16', 'vsftpd_clients' ),
+            ('vsftpd_data_conn_retr', 'uint16', 'vsftpd_data_conn_retr' ),
+            ('vsftpd_data_conn_idle', 'uint16', 'vsftpd_data_conn_idle' ),
+            ('vsftpd_data_conn_other', 'uint16', 'vsftpd_data_conn_other' ),
+        )
+                   
+        super(Vsftpd, self ).__init__()
+
+
+
+    def get_status (self):
+        """Retrieve data from Vsftpd.
+        """
+        
+        output = oneliner('ps -u ftp -o cmd')
+        
+        # Parse output into a dictionary.
+        result = {}
+        # Remove starting 'vsftpd: '. Resulting format: [ <ip>, <data> ]
+        conns = [ line.split(': ')[1:] for line in output.split('\n') ]
+        conns = conns[1:-1]    # Remove header and empty line.
+        
+        ips = [ ip  for ip, data in conns if data=='connected' ]
+        result['vsftpd_clients'] = len(set(ips))
+        data_retr = [ data  for ___, data in conns if data.startswith('RETR') ]
+        result['vsftpd_data_conn_retr'] = len(data_retr)
+        data_idle = [ data  for ___, data in conns if data.startswith('IDLE') ]
+        result['vsftpd_data_conn_idle'] = len(data_idle)
+        data_other = [ data  for ___, data in conns if not data.startswith(('connected', 'RETR', 'IDLE')) ]
+        result['vsftpd_data_conn_other'] = len(data_other)
+        
+        return result
+
+
+
+
+
+
+
 def main():
     """Command line interface.
     """
@@ -201,6 +251,8 @@ def main():
                       help="Apache mod_status")
     parser.add_option("-m", "--mysql", action="store_true",
                       help="Mysql SHOW STATUS")
+    parser.add_option("-f", "--vsftpd", action="store_true",
+                      help="vsftpd status")
     
     opts, ___ = parser.parse_args()
     
@@ -212,9 +264,10 @@ def main():
 
     if opts.apache:
         Apache().save(opts.dry_run)
-
     if opts.mysql:
         Mysql().save(opts.dry_run)
+    if opts.vsftpd:
+        Vsftpd().save(opts.dry_run)
 
 
 if __name__ == "__main__":
