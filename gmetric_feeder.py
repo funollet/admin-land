@@ -11,18 +11,25 @@ Finally, invokes 'gmetric' to introduce the data into Ganglia.
 
 import urllib
 from optparse import OptionParser
-import commands
 import subprocess
+import logging
 
 
-def oneliner(cmd):
+def oneliner(cmd, stdin=''):
     """Execs the string in a shell. Returns cmd output.
 
     @cmd:       string with the command to be executed
+    @stdin:     (optional) string writen to the command's standard input
     """
-    # TODO: quoted strings are splitted, too.
-    return subprocess.Popen(cmd.split(),
-        stdout=subprocess.PIPE).communicate()[0]
+    if stdin:
+        pipe = subprocess.Popen(cmd.split(), stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE)
+        pipe.stdin.write(stdin)
+    else:
+        pipe = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE)
+    return pipe.communicate()[0]
+
+
 
 
 
@@ -49,7 +56,7 @@ class Gmetric (object):
                 (data, name, key, rrd_type)
         """
         
-        template = 'gmetric -n "%s" -v "%s" -t "%s"'
+        template = 'gmetric -n "%s" -v "%s" -t %s'
 
         if name is None:
             name = key.lower()
@@ -70,10 +77,13 @@ class Gmetric (object):
         """Printable representation."""
         return '\n'.join(self.__get_commands__())
 
-    def save (self):
+    def save (self, dry_run=False):
         """Put data into Ganglia."""
+        
         for cmd in self.__get_commands__():
-            commands.getstatusoutput(cmd)
+            logging.debug(cmd)
+            if not dry_run:
+                oneliner(cmd)
 
 
 
@@ -160,12 +170,7 @@ class Mysql (Gmetric):
         """Retrieve data from Mysql's 'SHOW STATUS'.
         """
         
-        pipe1 = subprocess.Popen("echo SHOW STATUS ;".split(),
-            stdout=subprocess.PIPE)
-        pipe2 = subprocess.Popen(["mysql"], stdin=pipe1.stdout,
-            stdout=subprocess.PIPE)
-        output = pipe2.communicate()[0]
-        
+        output = oneliner('mysql', 'SHOW STATUS')
         # Parse output into a dictionary.
         result = {}
         for line in output.split('\n'):
@@ -181,13 +186,15 @@ class Mysql (Gmetric):
 
 
 def main():
-    """Execute the program.
+    """Command line interface.
     """
     
     # Parse command-line.
     usage = """usage: %prog [options]"""
     parser = OptionParser(usage=usage)
     
+    parser.add_option("-v", "--verbose", action="store_true",
+                      help="show more information", dest="verbose")
     parser.add_option("-n", "--dry-run", action="store_true",
                       help="do nothing; just show", dest="dry_run")
     parser.add_option("-a", "--apache", action="store_true",
@@ -197,19 +204,17 @@ def main():
     
     opts, ___ = parser.parse_args()
     
-    
+    # Set debug level.
+    if opts.verbose:
+        logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig(level=logging.INFO)
+
     if opts.apache:
-        if opts.dry_run:
-            print Apache()
-        else:
-            Apache().save()
+        Apache().save(opts.dry_run)
 
     if opts.mysql:
-        if opts.dry_run:
-            print Mysql()
-        else:
-            Mysql().save()
-
+        Mysql().save(opts.dry_run)
 
 
 if __name__ == "__main__":
