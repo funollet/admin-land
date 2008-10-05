@@ -31,8 +31,8 @@ class Gmetric (object):
     """
 
     def __init__ (self):
+        """Initialize the object."""
         self.data = self.get_status()
-
 
     # Overwrite this method for derived classes.
     def get_status (self):
@@ -42,7 +42,7 @@ class Gmetric (object):
         return {}
 
     
-    def gmetric_formated (self, key, rrd_type, name=None, unit=None):
+    def __gmetric_formated__ (self, key, rrd_type, name=None, unit=None):
         """Returns values formatted for gmetric (Ganglia).
     
         args:    (data, name, key, rrd_type, unit) or 
@@ -61,21 +61,19 @@ class Gmetric (object):
         return gmetric_cmd
     
     
-    def __run__ (self, cmd):
-        """Saves data into Gmetric.
-        """
-        return commands.getstatusoutput(cmd)
-
-
+    def __get_commands__(self):
+        """Build a list of commands that should be executed to put data
+        into Ganglia."""
+        return [ self.__gmetric_formated__(*param)  for param in self.params ]
+        
     def __repr__(self):
-        lines = [ self.gmetric_formated(*param)  for param in self.params ]
-        return '\n'.join(lines)
-
+        """Printable representation."""
+        return '\n'.join(self.__get_commands__())
 
     def save (self):
-        for param in self.params:
-            cmd = self.gmetric_formated(*param)
-            self.__run__(cmd)
+        """Put data into Ganglia."""
+        for cmd in self.__get_commands__():
+            commands.getstatusoutput(cmd)
 
 
 
