@@ -10,22 +10,20 @@
 # - check_conf_file ()
 
 
-####  Custom config  ####
-# Destination directory.
-BACKUPDIR='/home/backups/mysql'
-#########################
+CONF_FILE="/etc/mysqldump_sep.conf"	# Custom configuration.
+BACKUP_DIR="/home/backups/mysql"	# Default destination directory. 
+REMOVE_PERIOD="1 month ago"		# Remove files older than...
+
+# Use this file to overwrite default configuration.
+if [ -f $CONF_FILE ] ; then
+    . $CONF_FILE
+fi
 
 
 # Just warn and continue.
 warn () { echo "[`basename $0`] warning: $*" ; } ;
 # Warn and exit.
 error () { echo "[`basename $0`] error: $*" ; exit 1 ; } ;
-# Checks var has value.
-test_var () {
-    NAME=`echo $1`
-    VALUE=$(eval echo \$`echo $1`)
-    [ -z "$VALUE" ] && warn "$NAME void." ;
-}
 
 
 usage () {
@@ -46,47 +44,47 @@ Example configuration for ~/.my.cnf
 }
 
 
-
-
 remove_older () {
     # Remove files older than given period of time.
 
     PERIOD="$*"
     [ -z "$PERIOD" ] && error "invalid time period of files to remove."
 
-    touch -d"$PERIOD" $BACKUPDIR/.time_mark
-    find  $BACKUPDIR ! -newer $BACKUPDIR/.time_mark | xargs rm
+    touch -d"$PERIOD" $BACKUP_DIR/.time_mark
+    find  $BACKUP_DIR ! -newer $BACKUP_DIR/.time_mark | xargs rm
 }
 
 
 
-main () {
-    case $1 in
-	'-u'|'--usage'|'-h'|'--help')
-	    usage && exit 1 ;;
-    esac
-
-    DDBB="$*"
-    if [ -z "$DDBB" ] ; then
-	# Backup all DBs.
-        DDBB=`mysql -BN -e 'show databases;'`
-    fi
-    
-    test_var BACKUPDIR
-    umask 0077
-    
-    remove_older '1 month ago'
-
-    # Dump each database
-    for db in $DDBB ; do
-	FNAME="$BACKUPDIR/$db.`date +%F-%H%M%S`"
-	mysqldump "$db" > "$FNAME" || warn "problems dumping $db"
-	# Compress if has contents, warn otherwise.
-	[ -s "$FNAME" ] && gzip -f "$FNAME" || warn "$FNAME void."
-    done
-
-    exit 0
-}
 
 
-main
+case $1 in
+    '-u'|'--usage'|'-h'|'--help')
+	usage && exit 1 ;;
+esac
+
+# Get list of databases to backup from command-line, or backup all.
+DDBB="$*"
+if [ -z "$DDBB" ] ; then
+    DDBB=`mysql -BN -e 'show databases;'`
+fi
+
+# Safety tests.
+[ -d $BACKUP_DIR ] || error "destination directory not found ($BACKUP_DIR)"
+[ -z "$DDBB" ] && error "no databases specified"
+umask 0077
+
+
+remove_older $REMOVE_PERIOD
+
+
+# Dump each database
+for db in $DDBB ; do
+    FNAME="$BACKUP_DIR/$db.`date +%F-%H%M%S`"
+    mysqldump "$db" > "$FNAME" || warn "problems dumping $db"
+    # Compress if has contents, warn otherwise.
+    [ -s "$FNAME" ] && gzip -f "$FNAME" || warn "$FNAME void."
+done
+
+exit 0
+
