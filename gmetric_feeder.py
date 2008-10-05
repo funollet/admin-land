@@ -12,6 +12,17 @@ Finally, invokes 'gmetric' to introduce the data into Ganglia.
 import urllib
 from optparse import OptionParser
 import commands
+import subprocess
+
+
+def oneliner(cmd):
+    """Execs the string in a shell. Returns cmd output.
+
+    @cmd:       string with the command to be executed
+    """
+    # TODO: quoted strings are splitted, too.
+    return subprocess.Popen(cmd.split(),
+        stdout=subprocess.PIPE).communicate()[0]
 
 
 
@@ -110,6 +121,7 @@ class Apache (Gmetric):
     def get_status (self):
         """Retrieve data from Apache's mod_status.
         """
+        
         sock = urllib.urlopen( self.url )
         page = sock.read()
         sock.close()
@@ -144,21 +156,29 @@ class Mysql (Gmetric):
                    
         super( Mysql, self ).__init__()
 
-        
+
+
     def get_status (self):
         """Retrieve data from Mysql's 'SHOW STATUS'.
         """
-        import MySQLdb
         
-        # Create a connection object and create a cursor
-        conn = MySQLdb.Connect(db="mysql", read_default_file="~/.my.cnf")
-        cursor = conn.cursor()
-        sql = "SHOW STATUS ;"
-        cursor.execute(sql)
-        results = cursor.fetchall()
-        conn.close()
-    
-        return dict(results)
+        pipe1 = subprocess.Popen("echo SHOW STATUS ;".split(),
+            stdout=subprocess.PIPE)
+        pipe2 = subprocess.Popen(["mysql"], stdin=pipe1.stdout,
+            stdout=subprocess.PIPE)
+        output = pipe2.communicate()[0]
+        
+        # Parse output into a dictionary.
+        result = {}
+        for line in output.split('\n'):
+            try:
+                key, value = line.split()
+            except ValueError:
+                key = line
+                value = ''
+            result[key] = value
+        
+        return result
 
 
 
