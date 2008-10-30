@@ -249,6 +249,39 @@ class Vsftpd(Gmetric):
 
 
 
+class Exim (Gmetric):
+    """Parses data about Exim usage.
+    """
+    
+    def __init__ (self):
+        """Initializes values.
+
+        %params: fields in mod_status we want to get.
+        """
+        
+        self.params = (
+            ( 'exim_incoming_queue', 'int16', 'exim_incoming_queue', 'messages'),
+            ( 'exim_outgoing_queue', 'int16', 'exim_outgoing_queue', 'messages'),
+
+        )
+
+        super( Exim, self ).__init__()
+
+        
+    def get_status (self):
+        result = {}
+        try:
+            # Remove the trailing '\n.
+            result['exim_incoming_queue'] = oneliner('/usr/sbin/exim -bpc')[:-1]
+            result['exim_outgoing_queue'] = oneliner('/usr/sbin/exim -bpc -DOUTGOING')[:-1]
+        except OSError:
+            return None
+
+        return result
+
+
+
+
 
 
 
@@ -270,6 +303,9 @@ def main():
                       help="Mysql SHOW STATUS")
     parser.add_option("-f", "--vsftpd", action="store_true",
                       help="vsftpd status")
+    parser.add_option("-e", "--exim", action="store_true",
+                      help="Exim status")
+
     
     opts, ___ = parser.parse_args()
     
@@ -283,8 +319,8 @@ def main():
         Apache().save(opts.dry_run)
     if opts.mysql:
         Mysql().save(opts.dry_run)
-    if opts.vsftpd:
-        Vsftpd().save(opts.dry_run)
+    if opts.exim:
+        Exim().save(opts.dry_run)
 
 
 if __name__ == "__main__":
