@@ -15,19 +15,20 @@ import subprocess
 import logging
 
 
-def oneliner(cmd, stdin=''):
+def oneliner(cmd, stdin=None):
     """Execs the string in a shell. Returns cmd output.
 
     @cmd:       string with the command to be executed
     @stdin:     (optional) string writen to the command's standard input
     """
-    if stdin:
-        pipe = subprocess.Popen(cmd.split(), stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE)
-        pipe.stdin.write(stdin)
+    pipe = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT)
+    ret = pipe.communicate(stdin)
+    
+    if pipe.returncode == 0:
+        return ret[0]
     else:
-        pipe = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE)
-    return pipe.communicate()[0]
+        return None
 
 
 
@@ -180,6 +181,9 @@ class Mysql (Gmetric):
         """
         
         output = oneliner('mysql', 'SHOW STATUS')
+        if not output:
+            return None
+        
         # Parse output into a dictionary.
         result = {}
         for line in output.split('\n'):
@@ -221,6 +225,9 @@ class Vsftpd(Gmetric):
         """
         
         output = oneliner('ps -u ftp -o cmd')
+        logging.debug(output)
+        if not output:
+            return None
         
         # Parse output into a dictionary.
         result = {}
