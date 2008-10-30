@@ -73,7 +73,10 @@ class Gmetric (object):
     def __get_commands__(self):
         """Build a list of commands that should be executed to put data
         into Ganglia."""
-        return [ self.__gmetric_formated__(*param)  for param in self.params ]
+        if self.data:
+            return [ self.__gmetric_formated__(*param)  for param in self.params]
+        else:
+            return ''
         
     def __repr__(self):
         """Printable representation."""
@@ -130,13 +133,20 @@ class Apache (Gmetric):
     def get_status (self):
         """Retrieve data from Apache's mod_status.
         """
-        
-        sock = urllib.urlopen( self.url )
+        try:
+            sock = urllib.urlopen( self.url )
+        except IOError:
+            # Unable to open a socket. Don't save any value, but keep running.
+            return None
         page = sock.read()
         sock.close()
     
         status = [line.split(': ') for line in page.splitlines()]
-        return dict(status)
+        try:
+            return dict(status)
+        except ValueError:
+            # The /server-status page can not be retrieved.
+            return None
 
 
 
