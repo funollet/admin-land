@@ -21,8 +21,8 @@ def oneliner(cmd, stdin=None):
     @cmd:       string with the command to be executed
     @stdin:     (optional) string writen to the command's standard input
     """
-    pipe = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT)
+    pipe = subprocess.Popen(cmd.split(), stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     ret = pipe.communicate(stdin)
     
     if pipe.returncode == 0:
