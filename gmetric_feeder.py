@@ -33,38 +33,68 @@ def oneliner(cmd, stdin=None):
 
 
 
+class GmetricSaver(object):
+    
+    def __init__(self):
+        
+        # Multicast port to send/receive on.
+        self.port = None
+        self.template = ['gmetric','--name %s', '--value %s', '--type %s']
+    
+    
+    def __call__(self):
+        # Make this class work as a singleton.
+        return self
+    
+    
+    def template_builder(self, unit=False):
+        tmpl = self.template
+        if self.port:
+            tmpl.insert(1, '--port %s' % self.port)
+        
+        if unit:
+            tmpl.append = '--unit %s'
+
+        return ' '.join([self.tmpl])
+
+    def show (self, params, data):
+        pass
+
+# Kind of singleton.
+GmetricSaver = GmetricSaver()
+
 
 class Gmetric (object):
     """Base class for retrieving data and putting it into gmetric.
     """
 
     def __init__ (self):
-        """Initialize the object."""
-        self.data = self.get_status()
-
-    # Overwrite this method for derived classes.
-    def get_status (self):
-        """Retrieves data from some source. Returns a dictionary with keys
-        and values to be stored with gmetric.
+        """Initialize the object.
         
-        Must define a self.params dict of keys we want into gmetric.
+        Must define a self.params dict of keys we want into gmetric, and
+        a self.data dict.
         """
-        return {}
+        
+        
+        self.template= 'gmetric'
+        if self.port:
+            self.template = ' '.join([self.template, '-p', self.port])
+            
+        self.template = ' '.join([self.template, '-n %s -v %s -t %s'])
+            
 
-    
     def __gmetric_formated__ (self, key, rrd_type, name=None, unit=None):
         """Returns values formatted for gmetric (Ganglia).
-    
-        args:    (data, name, key, rrd_type, unit) or 
-                (data, name, key, rrd_type)
         """
         
-        template = 'gmetric -n %s -v %s -t %s'
-
         if name is None:
             name = key.lower()
-        gmetric_cmd = template % ( name, self.data[key], rrd_type )
-    
+        
+        gmetric_cmd = self.template % ( name, self.data[key], rrd_type )
+        # name:            gmetric --name
+        # self.data[key]:  gmetric --value
+        # rrd_type:        gmetric --type
+        # unit:            gmetric --unit
         if not unit is None:
             gmetric_cmd = ' '.join( (gmetric_cmd, '-u %s' % unit) )
     
@@ -110,7 +140,7 @@ class Apache (Gmetric):
     </Location>
     """
     
-    def __init__ (self, url=None):
+    def __init__ (self, url=None, port=None):
         """Initializes values.
 
         %url: (optional)
@@ -127,7 +157,10 @@ class Apache (Gmetric):
             self.url = 'http://localhost/server-status/?auto'
         else:
             self.url = url
-
+            
+        self.port = port
+        
+        self.data = self.get_status()
         super( Apache, self ).__init__()
 
         
@@ -159,10 +192,12 @@ class Mysql (Gmetric):
     Put authentication data on '~/.my.cnf', please.
     """
     
-    def __init__ (self):
+    def __init__ (self, port=None):
         """Initializes values.
         """
         
+        # params format:
+        # (self.data[key], gmetric-type, gmetric-name, gmetric-unit)
         self.params = (
             ('Questions', 'uint16', 'mysql_queries', 'queries' ),
             ('Threads_connected', 'uint16', 'mysql_threads_conn', 'threads'),
@@ -172,6 +207,9 @@ class Mysql (Gmetric):
             ('Slow_queries', 'float', 'mysql_slow_queries', 'queries/sec' ),
         )
                    
+        self.port = port
+        
+        self.data = self.get_status()
         super( Mysql, self ).__init__()
 
 
@@ -205,7 +243,7 @@ class Vsftpd(Gmetric):
     status per-process.
     """
     
-    def __init__ (self):
+    def __init__ (self, port=None):
         """Initializes values.
         """
         
@@ -215,7 +253,10 @@ class Vsftpd(Gmetric):
             ('vsftpd_data_conn_idle', 'uint16', 'vsftpd_data_conn_idle' ),
             ('vsftpd_data_conn_other', 'uint16', 'vsftpd_data_conn_other' ),
         )
-                   
+        
+        self.port = port
+
+        self.data = self.get_status()
         super(Vsftpd, self ).__init__()
 
 
@@ -235,7 +276,7 @@ class Vsftpd(Gmetric):
         conns = [ line.split(': ')[1:] for line in output.split('\n') ]
         conns = conns[1:-1]    # Remove header and empty line.
         
-        ips = [ ip  for ip, data in conns if data=='connected' ]
+        ips = [ ip  for ip, data in conns if data == 'connected' ]
         result['vsftpd_clients'] = len(set(ips))
         data_retr = [ data  for ___, data in conns if data.startswith('RETR') ]
         result['vsftpd_data_conn_retr'] = len(data_retr)
@@ -253,7 +294,7 @@ class Exim (Gmetric):
     """Parses data about Exim usage.
     """
     
-    def __init__ (self):
+    def __init__ (self, port=None):
         """Initializes values.
 
         %params: fields in mod_status we want to get.
@@ -265,6 +306,9 @@ class Exim (Gmetric):
 
         )
 
+        self.port = port
+        
+        self.data = self.get_status()
         super( Exim, self ).__init__()
 
         
@@ -297,6 +341,8 @@ def main():
                       help="show more information", dest="verbose")
     parser.add_option("-n", "--dry-run", action="store_true",
                       help="do nothing; just show", dest="dry_run")
+    parser.add_option("-p", "--port", action="store",
+                      help="multicast port for Ganglia")
     parser.add_option("-a", "--apache", action="store_true",
                       help="Apache mod_status")
     parser.add_option("-m", "--mysql", action="store_true",
@@ -315,12 +361,15 @@ def main():
     else:
         logging.basicConfig(level=logging.INFO)
 
+    # TODO: add --url for Apache().
     if opts.apache:
-        Apache().save(opts.dry_run)
+        Apache(port=opts.port).save(opts.dry_run)
     if opts.mysql:
-        Mysql().save(opts.dry_run)
+        Mysql(port=opts.port).save(opts.dry_run)
+    if opts.vsftpd:
+        Vsftpd(port=opts.port).save(opts.dry_run)
     if opts.exim:
-        Exim().save(opts.dry_run)
+        Exim(port=opts.port).save(opts.dry_run)
 
 
 if __name__ == "__main__":
