@@ -43,7 +43,7 @@ class GmetricSaver(object):
     
     
     def __call__(self):
-        # Make this class work as a singleton.
+        """Overwrite __call__ to make this class work as a singleton."""
         return self
     
     
@@ -371,6 +371,8 @@ def main():
     if opts.exim:
         Exim(port=opts.port).save(opts.dry_run)
 
+    gs = GmetricSaver()
+    print gs.template
 
 if __name__ == "__main__":
     main()
