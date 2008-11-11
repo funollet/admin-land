@@ -70,20 +70,9 @@ class Gmetric (object):
     """Base class for retrieving data and putting it into gmetric.
     """
 
-    def __init__ (self):
-        """Initialize the object.
-        
-        Must define a self.params dict of keys we want into gmetric, and
-        a self.data dict.
-        """
-
-
-    def __gmetric_formated__ (self, key, rrd_type, name=None, unit=None):
+    def __gmetric_formated__ (self, key, name, rrd_type, unit=None):
         """Returns values formatted for gmetric (Ganglia).
         """
-        
-        if name is None:
-            name = key.lower()
         
         # name:            gmetric --name
         # self.data[key]:  gmetric --value
@@ -141,10 +130,10 @@ class Apache (Gmetric):
         """
         
         self.params = (
-            ( 'BytesPerSec', 'int16', 'apache_bytes', 'Bytes/sec'),
-            ( 'ReqPerSec', 'float', 'apache_hits', 'Requests/sec'),
-            ( 'BusyWorkers', 'int16', 'apache_workers_busy', 'Processes'),
-            ( 'IdleWorkers', 'int16', 'apache_workers_idle', 'Processes'),
+            ( 'BytesPerSec', 'apache_bytes', 'int16', 'Bytes/sec'),
+            ( 'ReqPerSec', 'apache_hits', 'float', 'Requests/sec'),
+            ( 'BusyWorkers', 'apache_workers_busy', 'int16', 'Processes'),
+            ( 'IdleWorkers', 'apache_workers_idle', 'int16', 'Processes'),
         )
 
         if not url:
@@ -191,12 +180,12 @@ class Mysql (Gmetric):
         # params format:
         # (self.data[key], gmetric-type, gmetric-name, gmetric-unit)
         self.params = (
-            ('Questions', 'uint16', 'mysql_queries', 'queries' ),
-            ('Threads_connected', 'uint16', 'mysql_threads_conn', 'threads'),
-            ('Com_select', 'uint16', 'mysql_select_queries', 'queries/sec'),
-            ('Table_locks_waited', 'float', 'mysql_table_locks_waited',
+            ('Questions', 'mysql_queries', 'uint16', 'queries' ),
+            ('Threads_connected', 'mysql_threads_conn', 'uint16', 'threads'),
+            ('Com_select', 'mysql_select_queries', 'uint16', 'queries/sec'),
+            ('Table_locks_waited', 'mysql_table_locks_waited', 'float',
                 'locks/sec'),
-            ('Slow_queries', 'float', 'mysql_slow_queries', 'queries/sec' ),
+            ('Slow_queries', 'mysql_slow_queries', 'float', 'queries/sec' ),
         )
                    
         self.data = self.get_status()
@@ -238,10 +227,10 @@ class Vsftpd(Gmetric):
         """
         
         self.params = (
-            ('vsftpd_clients', 'uint16', 'vsftpd_clients' ),
-            ('vsftpd_data_conn_retr', 'uint16', 'vsftpd_data_conn_retr' ),
-            ('vsftpd_data_conn_idle', 'uint16', 'vsftpd_data_conn_idle' ),
-            ('vsftpd_data_conn_other', 'uint16', 'vsftpd_data_conn_other' ),
+            ('vsftpd_clients', 'vsftpd_clients', 'uint16' ),
+            ('vsftpd_data_conn_retr', 'vsftpd_data_conn_retr', 'uint16' ),
+            ('vsftpd_data_conn_idle', 'vsftpd_data_conn_idle', 'uint16' ),
+            ('vsftpd_data_conn_other', 'vsftpd_data_conn_other', 'uint16' ),
         )
         
         self.data = self.get_status()
@@ -289,8 +278,8 @@ class Exim (Gmetric):
         """
         
         self.params = (
-            ( 'exim_incoming_queue', 'int16', 'exim_incoming_queue', 'messages'),
-            ( 'exim_outgoing_queue', 'int16', 'exim_outgoing_queue', 'messages'),
+            ( 'exim_incoming_queue', 'exim_incoming_queue', 'int16', 'messages'),
+            ( 'exim_outgoing_queue', 'exim_outgoing_queue', 'int16', 'messages'),
         )
 
         self.data = self.get_status()
