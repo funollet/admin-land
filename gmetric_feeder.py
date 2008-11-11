@@ -76,8 +76,6 @@ class Gmetric (object):
         Must define a self.params dict of keys we want into gmetric, and
         a self.data dict.
         """
-        
-        self.gs = GmetricSaver()
 
 
     def __gmetric_formated__ (self, key, rrd_type, name=None, unit=None):
@@ -93,9 +91,9 @@ class Gmetric (object):
         # unit:            gmetric --unit
     
         if not unit:
-            gmetric_cmd = self.gs.template_builder() % ( name, self.data[key], rrd_type )
+            gmetric_cmd = gmsaver.template_builder() % ( name, self.data[key], rrd_type )
         else:
-            gmetric_cmd = self.gs.template_builder(unit) % ( name, self.data[key], rrd_type, unit )
+            gmetric_cmd = gmsaver.template_builder(unit) % ( name, self.data[key], rrd_type, unit )
 
         return gmetric_cmd
     
@@ -293,7 +291,6 @@ class Exim (Gmetric):
         self.params = (
             ( 'exim_incoming_queue', 'int16', 'exim_incoming_queue', 'messages'),
             ( 'exim_outgoing_queue', 'int16', 'exim_outgoing_queue', 'messages'),
-
         )
 
         self.data = self.get_status()
@@ -316,11 +313,8 @@ class Exim (Gmetric):
 
 
 
+if __name__ == "__main__":
 
-def main():
-    """Command line interface.
-    """
-    
     # Parse command-line.
     usage = """usage: %prog [options]"""
     parser = OptionParser(usage=usage)
@@ -349,9 +343,9 @@ def main():
     else:
         logging.basicConfig(level=logging.INFO)
 
-    gs = GmetricSaver()
+    gmsaver = GmetricSaver()
     if opts.port:
-        gs.port = opts.port
+        gmsaver.port = opts.port
     
     # TODO: add --url for Apache().
     if opts.apache:
@@ -362,7 +356,3 @@ def main():
         Vsftpd().save(opts.dry_run)
     if opts.exim:
         Exim().save(opts.dry_run)
-
-
-if __name__ == "__main__":
-    main()
