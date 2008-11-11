@@ -13,6 +13,7 @@ import urllib
 from optparse import OptionParser
 import subprocess
 import logging
+import copy
 
 
 def oneliner(cmd, stdin=None):
@@ -48,14 +49,15 @@ class GmetricSaver(object):
     
     
     def template_builder(self, unit=False):
-        tmpl = self.template
+        tmpl = copy.copy(self.template)
         if self.port:
             tmpl.insert(1, '--port %s' % self.port)
         
         if unit:
-            tmpl.append = '--unit %s'
+            tmpl += ['--unit %s']
 
-        return ' '.join([self.tmpl])
+        return ' '.join(tmpl)
+
 
     def show (self, params, data):
         pass
@@ -75,13 +77,8 @@ class Gmetric (object):
         a self.data dict.
         """
         
-        
-        self.template= 'gmetric'
-        if self.port:
-            self.template = ' '.join([self.template, '-p', self.port])
-            
-        self.template = ' '.join([self.template, '-n %s -v %s -t %s'])
-            
+        self.gs = GmetricSaver()
+
 
     def __gmetric_formated__ (self, key, rrd_type, name=None, unit=None):
         """Returns values formatted for gmetric (Ganglia).
@@ -90,14 +87,16 @@ class Gmetric (object):
         if name is None:
             name = key.lower()
         
-        gmetric_cmd = self.template % ( name, self.data[key], rrd_type )
         # name:            gmetric --name
         # self.data[key]:  gmetric --value
         # rrd_type:        gmetric --type
         # unit:            gmetric --unit
-        if not unit is None:
-            gmetric_cmd = ' '.join( (gmetric_cmd, '-u %s' % unit) )
     
+        if not unit:
+            gmetric_cmd = self.gs.template_builder() % ( name, self.data[key], rrd_type )
+        else:
+            gmetric_cmd = self.gs.template_builder(unit) % ( name, self.data[key], rrd_type, unit )
+
         return gmetric_cmd
     
     
@@ -123,9 +122,6 @@ class Gmetric (object):
 
 
 
-
-
-
 class Apache (Gmetric):
     """Gets data from Apache mod_status and digest it for gmetric.
 
@@ -140,7 +136,7 @@ class Apache (Gmetric):
     </Location>
     """
     
-    def __init__ (self, url=None, port=None):
+    def __init__ (self, url=None):
         """Initializes values.
 
         %url: (optional)
@@ -158,8 +154,6 @@ class Apache (Gmetric):
         else:
             self.url = url
             
-        self.port = port
-        
         self.data = self.get_status()
         super( Apache, self ).__init__()
 
@@ -192,7 +186,7 @@ class Mysql (Gmetric):
     Put authentication data on '~/.my.cnf', please.
     """
     
-    def __init__ (self, port=None):
+    def __init__ (self):
         """Initializes values.
         """
         
@@ -207,8 +201,6 @@ class Mysql (Gmetric):
             ('Slow_queries', 'float', 'mysql_slow_queries', 'queries/sec' ),
         )
                    
-        self.port = port
-        
         self.data = self.get_status()
         super( Mysql, self ).__init__()
 
@@ -243,7 +235,7 @@ class Vsftpd(Gmetric):
     status per-process.
     """
     
-    def __init__ (self, port=None):
+    def __init__ (self):
         """Initializes values.
         """
         
@@ -254,8 +246,6 @@ class Vsftpd(Gmetric):
             ('vsftpd_data_conn_other', 'uint16', 'vsftpd_data_conn_other' ),
         )
         
-        self.port = port
-
         self.data = self.get_status()
         super(Vsftpd, self ).__init__()
 
@@ -294,10 +284,10 @@ class Exim (Gmetric):
     """Parses data about Exim usage.
     """
     
-    def __init__ (self, port=None):
+    def __init__ (self):
         """Initializes values.
 
-        %params: fields in mod_status we want to get.
+        %params: fields from Exim we want to get.
         """
         
         self.params = (
@@ -306,8 +296,6 @@ class Exim (Gmetric):
 
         )
 
-        self.port = port
-        
         self.data = self.get_status()
         super( Exim, self ).__init__()
 
@@ -361,18 +349,20 @@ def main():
     else:
         logging.basicConfig(level=logging.INFO)
 
+    gs = GmetricSaver()
+    if opts.port:
+        gs.port = opts.port
+    
     # TODO: add --url for Apache().
     if opts.apache:
-        Apache(port=opts.port).save(opts.dry_run)
+        Apache().save(opts.dry_run)
     if opts.mysql:
-        Mysql(port=opts.port).save(opts.dry_run)
+        Mysql().save(opts.dry_run)
     if opts.vsftpd:
-        Vsftpd(port=opts.port).save(opts.dry_run)
+        Vsftpd().save(opts.dry_run)
     if opts.exim:
-        Exim(port=opts.port).save(opts.dry_run)
+        Exim().save(opts.dry_run)
 
-    gs = GmetricSaver()
-    print gs.template
 
 if __name__ == "__main__":
     main()
