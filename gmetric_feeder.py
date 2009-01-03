@@ -59,8 +59,16 @@ class GmetricSaver(object):
         return ' '.join(tmpl)
 
 
-    def show (self, params, data):
-        pass
+    def show (self, params, value):
+        
+        data = params
+        if len(params) == 3:
+            template = self.template_builder(unit=True)
+        else:
+            template = self.template_builder()
+
+        data.insert(1, value)
+        return template % tuple(data)
 
 # Kind of singleton.
 GmetricSaver = GmetricSaver()
@@ -80,9 +88,9 @@ class Gmetric (object):
         # unit:            gmetric --unit
     
         if not unit:
-            gmetric_cmd = gmsaver.template_builder() % ( name, self.data[key], rrd_type )
+            gmetric_cmd = gmsaver.show( [name, rrd_type], self.data[key] )
         else:
-            gmetric_cmd = gmsaver.template_builder(unit) % ( name, self.data[key], rrd_type, unit )
+            gmetric_cmd = gmsaver.show( [name, rrd_type, unit], self.data[key] )
 
         return gmetric_cmd
     
