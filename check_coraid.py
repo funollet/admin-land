@@ -80,6 +80,7 @@ def parse_command_line ():
     return (options, args)
 
 
+
 def cec_expect(shelf, interface):
     """Runs commands 'show -l' and 'list -l' on a Coraid console.
     
@@ -89,6 +90,11 @@ def cec_expect(shelf, interface):
     Uses the pexpect module to send commands and retrieve output.
     """
     
+    # Using pexpect with the 'cec' client gives a unsorted or noisy
+    # output. I added some extra carriage-returns before and after the
+    # commands and filter the output to remove lines without information.
+    # This workaround seems to be enought.
+    
     cec_cmd = "%s -s%s -ee %s" % (CEC, shelf, interface)
     # Run with 'sudo' unless we are root.
     if os.getuid() != 0:
@@ -96,21 +102,33 @@ def cec_expect(shelf, interface):
         
     logging.debug(cec_cmd)
 
+    # File-like object to write pexpect output.
+    output = StringIO.StringIO()
+
     child = pexpect.spawn(cec_cmd, timeout=CEC_TIMEOUT)
     child.expect("Escape is Ctrl-e")
     child.sendline("")
+    child.sendline("")
+    child.sendline("")
     child.expect("SR shelf(.*)>")
     
-    # File-like object to write pexpect output.
-    output = StringIO.StringIO()
     child.logfile = output
     
     # Run 'show -l'.
     child.sendline("show -l")
+    child.sendline("")
+    child.sendline("")
+    child.sendline("")
     child.expect("SR shelf(.*)>")
 
     # Run 'list -l'
+    child.sendline("")
+    child.sendline("")
+    child.sendline("")
     child.sendline("list -l")
+    child.sendline("")
+    child.sendline("")
+    child.sendline("")
     child.expect("SR shelf(.*)>")
     
     # Stop capturing output.
@@ -120,8 +138,27 @@ def cec_expect(shelf, interface):
     child.send("")
     child.expect(">>>")
     child.send("q\r")
+    child.expect(pexpect.EOF)
+    child.close()
     
-    return output.getvalue()
+    return cec_normalize(output.getvalue())
+
+
+
+def is_informative(line):
+    """Returns True if the line contains significative information.
+    """
+    if line == '' or line.startswith(('SR shelf', 'list -l', 'show -l')):
+        return False
+    return True
+    
+
+def cec_normalize(text):
+    """Filter irrelevant lines.
+    """
+    lines = text.split('\n')
+    goodlines = [line for line in lines if is_informative(line)]
+    return '\n'.join(goodlines)
 
 
 
