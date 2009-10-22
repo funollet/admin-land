@@ -11,13 +11,15 @@ Requirements:
 First usage: run with --show and put the output
 on /var/lib/check_coraid/. Example:
 
-  # check_coraid.py -s0 -i eth2 > /var/lib/check_coraid/shelf0.baseline
+  # check_coraid.py -s0 -i eth2 --show > /var/lib/check_coraid/shelf0.baseline
 
-In order to run as a Nagios plugin you will need to add something
-like that to your /etc/sudoers file.
+This plugin must run 'cec' as root and, if there's a timeout, must be able to
+kill it. That means you need something like this on your /etc/sudoers file.
 
-  nagios  ALL= NOPASSWD: /usr/local/bin/cec
-
+  nagios  ALL= NOPASSWD: /usr/local/lib/nagios/plugins/check_coraid.py
+  
+This is giving full privileges to the script, so please check that no one can
+overwrite the Nagios plugin neither the 'cec' binary.
 
 This script is inspired on 'aoe-chk-coraid.sh' by William A. Arlofski
 (http://www.revpol.com/coraid_scripts).
@@ -46,8 +48,9 @@ import os
 from optparse import OptionParser
 import logging
 
-
+# Full path of the 'cec' binary.
 CEC = '/usr/local/bin/cec'
+# How many seconds to wait before killing 'cec'.
 CEC_TIMEOUT = 5
 
 
@@ -73,10 +76,6 @@ def parse_command_line ():
 
     options, args = parser.parse_args()
 
-    # Check required options.
-    #if not args:
-    #    parser.error("some arguments are required")
-
     return (options, args)
 
 
@@ -91,9 +90,9 @@ def cec_expect(shelf, interface):
     """
     
     # Using pexpect with the 'cec' client gives a unsorted or noisy
-    # output. I added some extra carriage-returns before and after the
+    # output. I add some extra carriage-returns before and after the
     # commands and filter the output to remove lines without information.
-    # This workaround seems to be enought.
+    # This workaround seems to be enough.
     
     cec_cmd = "%s -s%s -ee %s" % (CEC, shelf, interface)
     # Run with 'sudo' unless we are root.
