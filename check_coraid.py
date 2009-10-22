@@ -106,41 +106,44 @@ def cec_expect(shelf, interface):
     output = StringIO.StringIO()
 
     child = pexpect.spawn(cec_cmd, timeout=CEC_TIMEOUT)
-    child.expect("Escape is Ctrl-e")
-    child.sendline("")
-    child.sendline("")
-    child.sendline("")
-    child.expect("SR shelf(.*)>")
+    try:
+        child.expect("Escape is Ctrl-e")
+        child.sendline("")
+        child.sendline("")
+        child.sendline("")
+        child.expect("SR shelf(.*)>")
+        
+        child.logfile = output
+        
+        # Run 'show -l'.
+        child.sendline("show -l")
+        child.sendline("")
+        child.sendline("")
+        child.sendline("")
+        child.expect("SR shelf(.*)>")
     
-    child.logfile = output
-    
-    # Run 'show -l'.
-    child.sendline("show -l")
-    child.sendline("")
-    child.sendline("")
-    child.sendline("")
-    child.expect("SR shelf(.*)>")
-
-    # Run 'list -l'
-    child.sendline("")
-    child.sendline("")
-    child.sendline("")
-    child.sendline("list -l")
-    child.sendline("")
-    child.sendline("")
-    child.sendline("")
-    child.expect("SR shelf(.*)>")
-    
-    # Stop capturing output.
-    child.logfile = None
-    # Disconnect.
-    child.send("\r")
-    child.send("")
-    child.expect(">>>")
-    child.send("q\r")
-    child.expect(pexpect.EOF)
-    child.close()
-    
+        # Run 'list -l'
+        child.sendline("")
+        child.sendline("")
+        child.sendline("")
+        child.sendline("list -l")
+        child.sendline("")
+        child.sendline("")
+        child.sendline("")
+        child.expect("SR shelf(.*)>")
+        
+        # Stop capturing output.
+        child.logfile = None
+        # Disconnect.
+        child.send("\r")
+        child.send("")
+        child.expect(">>>")
+        child.send("q\r")
+        child.expect(pexpect.EOF)
+        child.close()
+    except (pexpect.TIMEOUT, pexpect.EOF):
+        child.close(force=True)
+        
     return cec_normalize(output.getvalue())
 
 
