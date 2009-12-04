@@ -85,6 +85,28 @@ def parse_command_line ():
 
 
 
+def nagios_ok(msg):
+    """Outputs OK message in Nagios format and exits.
+    """
+    if not opts.quiet:
+        print "OK: %s" % msg
+    sys.exit(0)
+
+def nagios_critical(msg):
+    """Outputs CRITICAL message in Nagios format and exits.
+    """
+    if not opts.quiet:
+        print "CRITICAL: %s" % msg
+    sys.exit(2)
+
+def nagios_unknown(msg):
+    """Outputs UNKNOWN message in Nagios format and exits.
+    """
+    if not opts.quiet:
+        print "UNKNOWN: %s" % msg
+    sys.exit(3)
+
+
 def cec_expect(shelf, interface):
     """Runs commands 'show -l' and 'list -l' on a Coraid console.
     
@@ -196,6 +218,8 @@ def create_baseline(shelf, base_dir, contents):
     baseline_file.close()
 
 
+
+
 def main():
     """Runs unless the file is imported.
     """
@@ -208,12 +232,14 @@ def main():
     else:
         logging.basicConfig(level=logging.INFO)
 
+    baseline_fname = os.path.join(opts.base_dir, 'shelf%s.baseline' % opts.shelf)
+    if not os.path.isfile(CEC):
+        nagios_unknown("%s not found" % CEC)
+
     try:
         output = cec_expect(opts.shelf, opts.interface)
     except pexpect.TIMEOUT:
-        if not opts.quiet:
-            print "CRITICAL: AoE shelf%s not responding" % opts.shelf
-        sys.exit(2)
+        nagios_critical("AoE shelf%s not responding" % opts.shelf)
 
     if opts.create:
         create_baseline(opts.shelf, opts.basedir, output)
@@ -226,18 +252,12 @@ def main():
     try:
         baseline = get_baseline(opts.shelf, opts.basedir)
     except IOError:
-        if not opts.quiet:
-            print "UNKNOWN: cannot open baseline file for shelf%s" % opts.shelf
-        sys.exit(3)
+        nagios_unknown("cannot open baseline file for shelf%s" % opts.shelf)
         
     if baseline == output:
-        if not opts.quiet:
-            print "OK: AoE shelf%s looks as usual" % opts.shelf
-        sys.exit(0)
+        nagios_ok("AoE shelf%s looks as usual" % opts.shelf)
     else:
-        if not opts.quiet:
-            print "CRITICAL: AoE shelf%s has changes" % opts.shelf
-        sys.exit(2)
+        nagios_critical("AoE shelf%s has changes" % opts.shelf)
 
 
 if __name__ == '__main__':
