@@ -8,10 +8,13 @@ Requirements:
   * Coraid Ethernet Console (cec)
   * 'pexpect' Python module
 
-First usage: run with --show and put the output
-on /var/lib/check_coraid/. Example:
+Before using the plugin for monitoring a Coraid device you must store its
+output on a file to compare against. You can do it with the option '--create'.
+Do it when the Coraid device is in good status.
 
-  # check_coraid.py -s0 -i eth2 --show > /var/lib/check_coraid/shelf0.baseline
+Example:
+
+  # check_coraid.py -i eth2 --shelf 0 --create
 
 This plugin must run 'cec' as root and, if there's a timeout, must be able to
 kill it. That means you need something like this on your /etc/sudoers file.
@@ -69,6 +72,8 @@ def parse_command_line ():
         help="directory for baseline files (default: /var/lib/check_coraid)")
     parser.add_option("-w", "--show", action="store_true",
                       help="show commands on stdout and exit",)
+    parser.add_option("-c", "--create", action="store_true",
+                      help="create initial baseline file",)
     parser.add_option("-d", "--debug", action="store_true", default=False,
                       help="show debugging info")
     parser.add_option("-q", "--quiet", action="store_true",
@@ -178,6 +183,18 @@ def get_baseline(shelf, base_dir):
     return baseline[:-1]
 
 
+def create_baseline(shelf, base_dir, contents):
+    """Create a baseline file to compare with on next runs.
+    """
+    baseline_fname = os.path.join(base_dir, 'shelf%s.baseline' % shelf)
+    try:
+        baseline_file = open(baseline_fname, 'w')
+    except IOError:
+        print "UNKNOWN: cannot open %s" % baseline_fname
+        sys.exit(3)
+    print >> baseline_file, contents
+    baseline_file.close()
+
 
 def main():
     """Runs unless the file is imported.
@@ -198,6 +215,9 @@ def main():
             print "CRITICAL: AoE shelf%s not responding" % opts.shelf
         sys.exit(2)
 
+    if opts.create:
+        create_baseline(opts.shelf, opts.basedir, output)
+        sys.exit()
     
     if opts.show:
         print output
