@@ -76,8 +76,6 @@ def parse_command_line ():
                       help="create initial baseline file",)
     parser.add_option("-d", "--debug", action="store_true", default=False,
                       help="show debugging info")
-    parser.add_option("-q", "--quiet", action="store_true",
-                      help="be silent",)
 
     options, args = parser.parse_args()
 
@@ -88,22 +86,19 @@ def parse_command_line ():
 def nagios_ok(msg):
     """Outputs OK message in Nagios format and exits.
     """
-    if not opts.quiet:
-        print "OK: %s" % msg
+    print "OK: %s" % msg
     sys.exit(0)
 
 def nagios_critical(msg):
     """Outputs CRITICAL message in Nagios format and exits.
     """
-    if not opts.quiet:
-        print "CRITICAL: %s" % msg
+    print "CRITICAL: %s" % msg
     sys.exit(2)
 
 def nagios_unknown(msg):
     """Outputs UNKNOWN message in Nagios format and exits.
     """
-    if not opts.quiet:
-        print "UNKNOWN: %s" % msg
+    print "UNKNOWN: %s" % msg
     sys.exit(3)
 
 
@@ -200,7 +195,8 @@ def get_baseline(baseline_fname):
     try:
         baseline_file = open(baseline_fname)
     except IOError:
-        nagios_unknown("cannot open %s. Run the plugin with --create for initialization." \
+        nagios_unknown( 
+            "cannot open %s. Run the plugin with --create for initialization."
             % baseline_fname)
 
     baseline = ''.join(baseline_file.readlines())
@@ -234,7 +230,8 @@ def main():
     else:
         logging.basicConfig(level=logging.INFO)
 
-    baseline_fname = os.path.join(opts.base_dir, 'shelf%s.baseline' % opts.shelf)
+    baseline_fname = os.path.join(opts.base_dir, 
+        'shelf%s.baseline' % opts.shelf)
     
     if not os.path.isfile(CEC):
         nagios_unknown("%s not found" % CEC)
