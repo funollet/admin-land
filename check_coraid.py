@@ -191,28 +191,26 @@ def cec_normalize(text):
 
 
 
-def get_baseline(shelf, base_dir):
+def get_baseline(baseline_fname):
     """Returns the contents of a baseline file for use as reference.
     
     @shelf:    number of the shelf.
     @base_dir: directory with the baseline files.
     """
-
-    fname = os.path.join(base_dir, 'shelf%s.baseline' % shelf)
     try:
-        baseline_file = open(fname)
+        baseline_file = open(baseline_fname)
     except IOError:
-        nagios_unknown("cannot open %s. Run the plugin with --create for initialization." % fname)
+        nagios_unknown("cannot open %s. Run the plugin with --create for initialization." \
+            % baseline_fname)
 
     baseline = ''.join(baseline_file.readlines())
     # Skip the last '\n' added.
     return baseline[:-1]
 
 
-def create_baseline(shelf, base_dir, contents):
+def create_baseline(baseline_fname, contents):
     """Create a baseline file to compare with on next runs.
     """
-    baseline_fname = os.path.join(base_dir, 'shelf%s.baseline' % shelf)
     try:
         baseline_file = open(baseline_fname, 'w')
     except IOError:
@@ -237,6 +235,7 @@ def main():
         logging.basicConfig(level=logging.INFO)
 
     baseline_fname = os.path.join(opts.base_dir, 'shelf%s.baseline' % opts.shelf)
+    
     if not os.path.isfile(CEC):
         nagios_unknown("%s not found" % CEC)
 
@@ -246,14 +245,14 @@ def main():
         nagios_critical("AoE shelf%s not responding" % opts.shelf)
 
     if opts.create:
-        create_baseline(opts.shelf, opts.basedir, output)
+        create_baseline(baseline_fname, output)
         sys.exit()
     
     if opts.show:
         print output
         sys.exit()
         
-    baseline = get_baseline(opts.shelf, opts.basedir)
+    baseline = get_baseline(baseline_fname)
         
     if baseline == output:
         nagios_ok("AoE shelf%s looks as usual" % opts.shelf)
