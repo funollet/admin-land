@@ -199,7 +199,11 @@ def get_baseline(shelf, base_dir):
     """
 
     fname = os.path.join(base_dir, 'shelf%s.baseline' % shelf)
-    baseline_file = open(fname)
+    try:
+        baseline_file = open(fname)
+    except IOError:
+        nagios_unknown("cannot open %s. Run the plugin with --create for initialization." % fname)
+
     baseline = ''.join(baseline_file.readlines())
     # Skip the last '\n' added.
     return baseline[:-1]
@@ -212,8 +216,8 @@ def create_baseline(shelf, base_dir, contents):
     try:
         baseline_file = open(baseline_fname, 'w')
     except IOError:
-        print "UNKNOWN: cannot open %s" % baseline_fname
-        sys.exit(3)
+        nagios_unknown("cannot open %s" % baseline_fname)
+
     print >> baseline_file, contents
     baseline_file.close()
 
@@ -249,10 +253,7 @@ def main():
         print output
         sys.exit()
         
-    try:
-        baseline = get_baseline(opts.shelf, opts.basedir)
-    except IOError:
-        nagios_unknown("cannot open baseline file for shelf%s" % opts.shelf)
+    baseline = get_baseline(opts.shelf, opts.basedir)
         
     if baseline == output:
         nagios_ok("AoE shelf%s looks as usual" % opts.shelf)
