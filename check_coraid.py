@@ -230,9 +230,13 @@ def main():
     else:
         logging.basicConfig(level=logging.INFO)
 
-    baseline_fname = os.path.join(opts.base_dir, 
+    baseline_fname = os.path.join(opts.basedir, 
         'shelf%s.baseline' % opts.shelf)
-    
+
+    if not opts.create and not opts.show:
+        baseline = get_baseline(baseline_fname)
+        
+    # Test we have the 'cec' binary.
     if not os.path.isfile(CEC):
         nagios_unknown("%s not found" % CEC)
 
@@ -248,8 +252,6 @@ def main():
     if opts.show:
         print output
         sys.exit()
-        
-    baseline = get_baseline(baseline_fname)
         
     if baseline == output:
         nagios_ok("AoE shelf%s looks as usual" % opts.shelf)
