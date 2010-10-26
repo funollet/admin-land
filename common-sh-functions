@@ -19,15 +19,7 @@ function check_execs () {
     # Verifies we can execute received files.
 
     for X in $@ ; do
-        # Is it in $PATH?
-        hash $X > /dev/null 2>&1 || error "$X not in PATH"
-        FULLPATH=`hash -t $X`
-        # If it's executable, jump to next file.
-        [ -x $FULLPATH ] && continue
-        # Is it a symbolic link...?
-        [ ! -L $FULLPATH ] || error "$X non-executable"
-        # ... and the referenced file is executable? (Ugly hack).
-        stat -Lc '%A' $FULLPATH | grep 'x' || error "$X non-executable"
+        which $X > /dev/null || error "$X not found"
     done
 }
 
