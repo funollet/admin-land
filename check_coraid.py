@@ -201,7 +201,7 @@ def get_baseline(baseline_fname):
             "cannot open %s. Run the plugin with --create for initialization."
             % baseline_fname)
 
-    return baseline_file.readlines()
+    return baseline_file.read()
 
 
 def create_baseline(baseline_fname, contents):
@@ -212,7 +212,7 @@ def create_baseline(baseline_fname, contents):
     except IOError:
         nagios_unknown("cannot open %s" % baseline_fname)
 
-    print >> baseline_file, contents
+    baseline_file.write(contents)
     baseline_file.close()
 
 
