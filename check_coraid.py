@@ -172,7 +172,9 @@ def cec_expect(shelf, interface):
 def is_informative(line):
     """Returns True if the line contains significative information.
     """
-    if line == '' or line.startswith(('SR shelf', 'list -l', 'show -l')):
+    not_needed = ('SR shelf', 'list -l', 'show -l', 
+            'warning: show is deprecated')
+    if line == '' or line.isspace() or line.startswith(not_needed):
         return False
     return True
     
@@ -199,9 +201,7 @@ def get_baseline(baseline_fname):
             "cannot open %s. Run the plugin with --create for initialization."
             % baseline_fname)
 
-    baseline = ''.join(baseline_file.readlines())
-    # Skip the last '\n' added.
-    return baseline[:-1]
+    return baseline_file.readlines()
 
 
 def create_baseline(baseline_fname, contents):
