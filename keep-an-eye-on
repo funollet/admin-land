@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+# keep-an-eye-on
+
+
+usage () {
+    cat <<.
+Usage: $(basename $0) <PID|process_name> --mail me@example.org
+    -h,--help     Show this message and exit.
+    -m,--mail=X   Send an email to this adress.
+    -s,--sleep=X  Sleep for X seconds before recheck process [default: 10].
+
+You can identify the process with a PID or a string suitable to be matched by 'pgrep'.
+.
+}
+
+parse_opts () {
+    tempopt=$(getopt --name $(basename $0) -o u,h,m:,s: -l usage,help,mail:,sleep: -- "$@")
+    # Finish if received some unknown option.
+    if [ $? != 0 ] ; then usage && exit 1 ; fi
+
+    eval set -- "$tempopt"
+
+    SLEEP_SECS=10           # Default value.
+
+    # Parse named options.
+    while true ; do
+        case "$1" in
+            -u|--usage|-h|--help) usage && exit ;;
+            -m|--mail) MAIL_ADDR=$2 ; shift 2 ;;
+            -s|--sleep) SLEEP_SECS=$2 ; shift 2 ;;
+            --) PROC="$2" ; shift 2 ; break ;;
+            *) echo "Internal error!" >&2 ; exit 1 ;;
+        esac
+    done
+
+    case $PROC in
+        ''|*[!0-9]*)    PROC_IS_PID="false";;
+        *)              PROC_IS_PID="true";;
+    esac
+
+    # Parse arguments.
+    if [ $# != 0 ] ; then usage && exit 1 ; fi
+    if [ -z "${PROC}" ] ; then usage && exit 1 ; fi 
+}
+
+
+email () {
+    cat <<.
+    echo "${PROC} finished" | mailx -s "${PROC} finished at $(hostname)" ${MAIL_ADDR}
+.
+}
+
+
+
+
+parse_opts "$@"
+
+while : ; do
+    if [ ${PROC_IS_PID} = "true" ] ; then
+         ps -p "${PROC}" >/dev/null || break
+    else
+        pgrep "${PROC}" >/dev/null || break
+    fi
+    sleep ${SLEEP_SECS}
+done
+
+[ -n ${MAIL_ADDR} ] && email
