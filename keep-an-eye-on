@@ -45,9 +45,7 @@ parse_opts () {
 
 
 email () {
-    cat <<.
     echo "${PROC} finished" | mailx -s "${PROC} finished at $(hostname)" ${MAIL_ADDR}
-.
 }
 
 
@@ -57,7 +55,7 @@ parse_opts "$@"
 
 while : ; do
     if [ ${PROC_IS_PID} = "true" ] ; then
-         ps -p "${PROC}" >/dev/null || break
+        ps -p "${PROC}" >/dev/null || break
     else
         pgrep "${PROC}" >/dev/null || break
     fi
